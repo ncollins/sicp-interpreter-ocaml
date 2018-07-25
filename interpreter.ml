@@ -5,7 +5,7 @@ module Value = struct
   type t =
     [ `Exp of Exp.t
     | `Function of ((Exp.A.t list) * Exp.t * (t Env.t))
-    | `Builtin of (int -> int -> int)
+    | `Int_binary_op of (int -> int -> int)
     ]
   [@@deriving sexp]
 
@@ -53,28 +53,28 @@ let rec eval_in_env (env : Value.t Env.t) (v : Value.t) : Value.t =
         let new_bindings = List.zip_exn params evaled_args in
         let new_env = Env.extend fenv new_bindings in
         eval_in_env new_env (`Exp body) 
-      | `Builtin f ->
+      | `Int_binary_op f ->
         begin
           match List.map args ~f:(fun e -> eval_in_env env (`Exp e)) with
           | [`Exp (`Int a); `Exp (`Int b)] -> `Exp (`Int (f a b))
           | _ -> 
-            raise_s [%sexp "could not apply builtin", (head : Exp.t), (args : Exp.t list)]
+            raise_s [%sexp "could not apply integer operation", (head : Exp.t), (args : Exp.t list)]
         end
       | _ ->
         raise_s [%sexp "could not apply as function", (head : Exp.t)]
     end
   | `Exp (`List []) -> failwith ""
   | `Function _ -> failwith ""
-  | `Builtin _ -> failwith ""
+  | `Int_binary_op _ -> failwith ""
 ;;
 
 
 let eval exp =
   let env = Env.empty () in
-  Env.bind env (Exp.A.of_string "+") (`Builtin ( + ));
-  Env.bind env (Exp.A.of_string "*") (`Builtin ( * ));
-  Env.bind env (Exp.A.of_string "-") (`Builtin ( - ));
-  Env.bind env (Exp.A.of_string "/") (`Builtin ( / ));
+  Env.bind env (Exp.A.of_string "+") (`Int_binary_op ( + ));
+  Env.bind env (Exp.A.of_string "*") (`Int_binary_op ( * ));
+  Env.bind env (Exp.A.of_string "-") (`Int_binary_op ( - ));
+  Env.bind env (Exp.A.of_string "/") (`Int_binary_op ( / ));
   eval_in_env env (`Exp exp)
 ;;
 
