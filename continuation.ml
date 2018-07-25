@@ -23,11 +23,17 @@ module Raw_cont : sig
 
   val return : 'a -> ('a, 'r) t
 
-  val map: ('a, 'r) t -> ('a -> 'b) -> ('b, 'r) t
+  val _map: ('a, 'r) t -> ('a -> 'b) -> ('b, 'r) t
+
+  val map : [ `Custom of ('a, 'e) t -> f:('a -> 'b) -> ('b, 'e) t
+            | `Define_using_bind ]
+
 
   val join : (('a, 'r) t, 'r) t -> ('a, 'r) t
 
   val chain : ('a, 'r) t -> ('a -> ('b, 'r) t) -> ('b, 'r) t
+
+  val bind : ('a, 'r) t -> f:('a -> ('b, 'r) t) -> ('b, 'r) t
 
   val run : ('r, 'r) t -> 'r
 
@@ -46,11 +52,14 @@ end = struct
   let return x =
     fun ret -> ret x
   ;;
+
     
-  let map (suspended : ('a, 'r) t) (f : ('a -> 'b)) =
-    fun (ret : ('b -> 'r)) ->
+  let _map suspended f =
+    fun ret ->
       suspended (fun x -> ret (f x))
   ;;
+
+  let map = `Define_using_bind
 
   let join (suspended : ((('a -> 'r) -> 'r) -> 'r) -> 'r) =
     fun (ret : ('a -> 'r)) ->
@@ -58,8 +67,10 @@ end = struct
   ;;
 
   let chain suspended f =
-    join (map suspended f)
+    join (_map suspended f)
   ;;
+
+  let bind suspended ~f = chain suspended f
 
   let _chain
       (suspended : ('a, 'r) t)
@@ -113,66 +124,13 @@ end = struct
 
 end
 
-module type Cont = sig
 
-  type s
-
-  type 'a t
-
-  val return : 'a -> 'a t
-
-  val map :  [ `Custom of 'a t -> f:('a -> 'b) -> 'b t | `Define_using_bind ]
-  (*
-  val map : 'a t -> f:('a -> 'b) -> 'b t
-
-  val join : ('a t) t -> ('a t)
-  *)
-
-  val bind : ('a t) -> f:('a -> 'b t) -> ('b t)
-
-  val run : ('a t) -> final:('a -> s) -> s
-
+module C = struct
+  include Monad.Make2(Raw_cont)
 end
-
-
-module type X = sig
-  type t
-end
-
-module Make_cont' (M : X) : Cont = struct
-
-  type s = M.t
-
-  type 'a t = ('a, M.t) Raw_cont.t
-
-  let return x = Raw_cont.return x
-
-  let map = `Define_using_bind
-  (*
-  let map t ~f = Raw_cont.map t f
-
-  let join t = Raw_cont.join t
-  *)
-
-  let bind t ~f = Raw_cont.chain t f
-
-  let run t ~final = t final
-
-end
-
-module Make_cont (M : X) = struct
-
-  module C : Cont =  Make_cont'(M)
-  include C
-  include Monad.Make(C)
-
-end
-
 
 module Examples2 = struct 
 
-  module String_cont = Make_cont(struct type t = string end)
-      
   let add_cps x y =
     fun ret -> ret (x + y)
   ;;
@@ -182,15 +140,29 @@ module Examples2 = struct
   ;;
 
   let cps_1 =
-    let open String_cont.Monad_infix in
-    let _c1 = add_cps 10 3 in
-    let _c2 = _c1 >>= sqr_cps in
-    _c2 (fun i -> Int.to_string i)
+    let calculation = 
+      let open C.Monad_infix in
+      add_cps 10 3 >>= fun total ->
+      sqr_cps total >>= fun squared ->
+      C.return (squared > 160)
+    in
+    calculation Bool.to_string
+  ;;
+
+  let cps_2 =
+    let calculation = 
+      let open C.Let_syntax in
+      let%bind total = add_cps 10 3 in
+      sqr_cps total
+    in
+    calculation ident
   ;;
 end
 
 let test_string =
-  sprintf !"%{sexp:int}, %{sexp:bool}"
+  sprintf !"%{sexp:int}, %{sexp:bool}, %{sexp:string}, %{sexp:int}"
     Examples.test_chaining
     Examples.test_chaining_2
+    Examples2.cps_1
+    Examples2.cps_2
 ;;
