@@ -77,12 +77,10 @@ and t_of_begin_sexp s =
   | _ -> None
 
 and t_of_list_sexp s =
-  printf !"Trying to parse as list: %{sexp:Sexp.t}\n" s;
   try Some (`List (List.t_of_sexp t_of_code_sexp s)) with
   | _ -> None
 
 and t_of_atom_sexp s =
-  printf !"Trying to parse as atom: %{sexp:Sexp.t}\n" s;
   try (Some (`Atom (A.t_of_sexp s))) with
   | _ -> None
 
@@ -115,7 +113,6 @@ and t_of_three_part_sexp
   try Some (validate_and_build_t (first, second)) with | _ -> None
 
 and t_of_code_sexp s =
-  printf !"Trying to parse: %{sexp:Sexp.t}\n" s;
   let t_opt =
     List.fold
       ~f:Option.first_some
@@ -175,10 +172,6 @@ and t_of_code_sexp s =
       ]
   in
   if Option.is_some t_opt
-  then begin
-    let t = Option.value_exn t_opt in
-    printf !"Parsed: %{sexp:Sexp.t} into %{sexp:t}\n" s t;
-    t
-  end
+  then Option.value_exn t_opt
   else raise_s [%sexp "Failed to parse", (s : Sexp.t)]
 ;;

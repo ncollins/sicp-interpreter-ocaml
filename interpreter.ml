@@ -12,16 +12,12 @@ module Value = struct
 end
 
 let rec eval_in_env (env : Value.t Env.t) (v : Value.t) : Value.t =
-  printf !"eval_in_env: v = %{sexp:Value.t}\n" v;
   match v with
   | `Exp `Unit       -> `Exp `Unit
   | `Exp (`Int i)    -> `Exp (`Int i)
   | `Exp (`String s) -> `Exp (`String s)
   | `Exp (`Atom a)   ->
-    begin
-    printf !"Atom! %{sexp:Exp.A.t}\n" a;
-      Env.lookup_ex env a
-    end
+    Env.lookup_ex env a
   | `Exp (`Bool b)   -> `Exp (`Bool b)
   | `Exp (`Define (atom, exp)) ->
     begin
@@ -50,7 +46,6 @@ let rec eval_in_env (env : Value.t Env.t) (v : Value.t) : Value.t =
   | `Exp (`Lambda (args, body)) -> `Function (args, body, env)
   | `Exp (`List (head::args)) ->
     begin
-      printf !"Head = %{sexp:Exp.t}\n" head;
       match eval_in_env env (`Exp head) with
       | `Function (params, body, fenv) ->
         let evaled_args =
@@ -75,38 +70,18 @@ let rec eval_in_env (env : Value.t Env.t) (v : Value.t) : Value.t =
 ;;
 
 
-let eval exp =
+let prelude =
   let env = Env.empty () in
   Env.bind env (Exp.A.of_string "+") (`Int_binary_op ( + ));
   Env.bind env (Exp.A.of_string "*") (`Int_binary_op ( * ));
   Env.bind env (Exp.A.of_string "-") (`Int_binary_op ( - ));
   Env.bind env (Exp.A.of_string "/") (`Int_binary_op ( / ));
-  eval_in_env env (`Exp exp)
+  env
 ;;
 
-let exp =
-  let s =
-    String.concat ~sep:" "
-     ["(begin "
-     ; "  (define a (+ 10 3))"
-     ; "  (define f (lambda (x y) (+ a (+ x y))))"
-     ; "  (let ((a (- 11 9)) (b (* 2 1) )) (f a b))"
-     ; ")"
-     ]
-  in
-  Sexp.of_string s
-  |> Exp.t_of_code_sexp
-;;
 
 let () =
-  printf !"%{sexp:string}\n" Continuation.test_string;
-  printf !"%{sexp:Exp.t}\n" exp;
-  printf !"%{sexp:Value.t}\n" (eval exp)
+  let program = Sexp.load_sexp "test.scm" |> Exp.t_of_code_sexp in
+  let result = eval_in_env prelude (`Exp program) in
+  printf !"%{sexp:Value.t}\n" result
 ;;
-
-(*
-let () =
-  let _env = Env.empty () in
-  Sexp.to_string_hum [%sexp ([3;4;5] : int list)]
-  |> print_endline
-  *)
