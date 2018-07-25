@@ -40,6 +40,12 @@ let rec eval_in_env (env : Value.t Env.t) (v : Value.t) : Value.t =
     |> List.fold ~init:(`Exp `Unit, env)
       ~f:(fun (_prev, env) exp -> (eval_in_env env exp, env))
     |> fst
+  | `Exp (`Let (bindings, body)) ->
+    let evaled_bindings =
+      List.map bindings ~f:(fun (a, e) -> (a, eval_in_env env (`Exp e)))
+    in
+    let new_env = Env.extend env evaled_bindings in
+    eval_in_env new_env (`Exp body)
   (* functions... *)
   | `Exp (`Lambda (args, body)) -> `Function (args, body, env)
   | `Exp (`List (head::args)) ->
@@ -84,7 +90,7 @@ let exp =
      ["(begin "
      ; "  (define a (+ 10 3))"
      ; "  (define f (lambda (x y) (+ a (+ x y))))"
-     ; "  (f 1 2)"
+     ; "  (let ((a (- 11 9)) (b (* 2 1) )) (f a b))"
      ; ")"
      ]
   in

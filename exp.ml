@@ -12,6 +12,7 @@ type t =
   | `Define of A.t * t
   | `Set of A.t * t
   | `Begin of t list
+  | `Let of ((A.t * t) list) * t
   | `Unit
   ]
 [@@deriving sexp]
@@ -43,6 +44,14 @@ let rec code_sexp_of_t = function
     let b = Sexp.of_string "begin" in
     let exps = List.map ~f:code_sexp_of_t ts in
     Sexp.List (b::exps)
+  | `Let (bindings, body) ->
+    let l_sexp = Sexp.of_string "let" in
+    let b_sexp =
+      Sexp.List
+        (List.map bindings
+           ~f:(fun (a, e) -> Sexp.List [ A.sexp_of_t a; code_sexp_of_t e ]))
+    in
+    Sexp.List [ l_sexp; b_sexp; code_sexp_of_t body ]
   | `Unit -> Sexp.unit
 ;;
 
@@ -139,6 +148,24 @@ and t_of_code_sexp s =
           ~validate_and_build_t:(function
               | (`Atom a, t) -> (`Set (a,t))
               | (x, _) -> raise_s [%sexp "set! must take a single atom as the first argument", (x:t)]
+            )
+          s
+      ; t_of_three_part_sexp
+          ~keyword:"let"
+          ~validate_and_build_t:(function
+              | (`List bindings, body) ->
+                let valid_bindings=
+                  List.filter_map bindings ~f:(function
+                      | `List [ `Atom a; exp ] -> Some (a, exp)
+                      | _ -> None
+                    )
+                in
+                if (List.length valid_bindings) <> (List.length bindings)
+                then 
+                  raise_s [%sexp "let must take a list of bindings as the first argument", ((`List bindings):t)]
+                else
+                  `Let (valid_bindings, body)
+              | (x, _) -> raise_s [%sexp "let must take a list of bindings as the first argument", (x:t)]
             )
           s
       ; t_of_begin_sexp s
