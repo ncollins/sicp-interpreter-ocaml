@@ -1,14 +1,14 @@
 
-type t
+type 'a t [@@deriving sexp]
 
-val empty : unit -> t
+val empty : unit -> 'a t
 
-val var_in_env : t -> Exp.A.t -> bool
+val var_in_env : 'a t -> Exp.A.t -> bool
 
-val lookup_ex : t -> Exp.A.t -> Exp.t
+val lookup_ex : 'a t -> Exp.A.t -> 'a
 
-val bind : t -> Exp.A.t -> Exp.t -> unit
+val bind : 'a t -> Exp.A.t -> 'a -> unit
 
-val set : t -> Exp.A.t -> Exp.t -> unit
+val set : 'a t -> Exp.A.t -> 'a -> unit
 
-val extend : t -> ((Exp.A.t * Exp.t) list) -> t
+val extend : 'a t -> ((Exp.A.t * 'a) list) -> 'a t

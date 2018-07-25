@@ -1,7 +1,7 @@
 open Core
 
-type t =
-  (Exp.A.t, Exp.t) Hashtbl.Poly.t list
+type 'a t =
+  (Exp.A.t, 'a) Hashtbl.Poly.t list
 [@@deriving sexp]
 
 let empty () =

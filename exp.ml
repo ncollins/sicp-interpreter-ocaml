@@ -12,6 +12,7 @@ type t =
   | `Define of A.t * t
   | `Set of A.t * t
   | `Begin of t list
+  | `Unit
   ]
 [@@deriving sexp]
 
@@ -42,11 +43,17 @@ let rec code_sexp_of_t = function
     let b = Sexp.of_string "begin" in
     let exps = List.map ~f:code_sexp_of_t ts in
     Sexp.List (b::exps)
+  | `Unit -> Sexp.unit
 ;;
 
 let rec t_of_int_sexp s =
   try Some (`Int (Int.t_of_sexp s)) with
   | _ -> None 
+
+and t_of_unit_sexp s =
+  if Sexp.equal s Sexp.unit
+  then Some `Unit
+  else None
 
 and t_of_bool_sexp s =
   try Some (`Bool (Bool.t_of_sexp s)) with
@@ -135,6 +142,7 @@ and t_of_code_sexp s =
             )
           s
       ; t_of_begin_sexp s
+      ; t_of_unit_sexp s
       ; t_of_list_sexp s
       ; t_of_atom_sexp s
       ]
