@@ -1,13 +1,5 @@
 open Core
 
-module Env = struct
-
-  type t =
-    (Exp.A.t, Exp.t) Hashtbl.Poly.t list
-  [@@deriving sexp]
-
-end
-
 let exp =
   let s =
     "(begin (define a (+ 10 3)) (define f (lambda (x y) (+ a x y))))" in
@@ -21,5 +13,6 @@ let () =
 ;;
 
 let () =
+  let _env = Env.empty () in
   Sexp.to_string_hum [%sexp ([3;4;5] : int list)]
   |> print_endline
