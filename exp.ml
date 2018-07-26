@@ -8,6 +8,7 @@ type t =
   | `Atom of A.t
   | `Bool of bool
   | `List of t list
+  | `If of (t * t * t)
   | `Lambda of ((A.t list) * t)
   | `Define of A.t * t
   | `Set of A.t * t
@@ -20,8 +21,15 @@ type t =
 let rec code_sexp_of_t = function
   | `Int i -> Int.sexp_of_t i
   | `Bool b -> Bool.sexp_of_t b
-  | `String s -> String.sexp_of_t s
+  | `String s -> Tuple2.sexp_of_t String.sexp_of_t String.sexp_of_t ("string", s)
   | `List l -> List.sexp_of_t code_sexp_of_t l
+  | `If (pred, exp_true, exp_false) ->
+    Sexp.List
+      [ Sexp.of_string "if"
+      ; code_sexp_of_t pred
+      ; code_sexp_of_t exp_true
+      ; code_sexp_of_t exp_false
+      ]
   | `Lambda (params, body) ->
     Sexp.List
       [ Sexp.of_string "lambda"
@@ -68,11 +76,29 @@ and t_of_bool_sexp s =
   try Some (`Bool (Bool.t_of_sexp s)) with
   | _ -> None 
 
+and t_of_string_sexp s =
+  let open Option.Let_syntax in
+  let%bind (tag, s) =
+    try Some (Tuple2.t_of_sexp String.t_of_sexp String.t_of_sexp s) with
+    | _ -> None
+  in
+  if String.equal tag "string"
+  then Some (`String s)
+  else None
+
 and t_of_begin_sexp s =
   match t_of_list_sexp s with
   | Some (`List ((`Atom a)::ts)) ->
     if A.equal a (A.of_string "begin")
     then Some (`Begin ts)
+    else None
+  | _ -> None
+
+and t_of_if_sexp s =
+  match t_of_list_sexp s with
+  | Some (`List [ `Atom a; pred; exp0; exp1 ]) ->
+    if A.equal a (A.of_string "if")
+    then Some (`If (pred, exp0, exp1))
     else None
   | _ -> None
 
@@ -118,6 +144,8 @@ and t_of_code_sexp s =
       ~f:Option.first_some
       ~init:(t_of_int_sexp s)
       [ t_of_bool_sexp s
+      ; t_of_string_sexp s
+      ; t_of_if_sexp s
       ; t_of_three_part_sexp
           ~keyword:"lambda"
           ~validate_and_build_t:(function

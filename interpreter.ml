@@ -6,10 +6,52 @@ module Value = struct
     [ `Exp of Exp.t
     | `Function of ((Exp.A.t list) * Exp.t * (t Env.t))
     | `Int_binary_op of (int -> int -> int)
+    | `Binary_op of (t -> t -> t)
     ]
   [@@deriving sexp]
 
 end
+
+module Prelude = struct
+
+  let equal v1 v2 =
+    if Sexp.equal (Value.sexp_of_t v1) (Value.sexp_of_t v2)
+    then `Exp (`Bool true)
+    else `Exp (`Bool false)
+  ;;
+
+  let prelude () =
+    let env = Env.empty () in
+    List.iter
+      ~f:(fun (symbol, f) ->
+          Env.bind env (Exp.A.of_string symbol) f
+        )
+      [ "+", (`Int_binary_op ( + ))
+      ; "*",  (`Int_binary_op ( * ))
+      ; "-",  (`Int_binary_op ( - ))
+      ; "/",  (`Int_binary_op ( / ))
+      ; "equal?", (`Binary_op equal)
+      ]
+    ;
+    env
+  ;;
+
+end
+
+(* TODO:
+
+   - should we be creating explict forms for
+     { if, begin, lambda, define, set }
+     as opposed to putting them in lists and matching on that?
+     This might be significantly simpler
+   - null (reuse unit?) and pairs
+   - string functions
+   - `Bool _ can be replaced with constants
+   - rename `List to `Application
+   - rename Atom to Symbol
+   - replace `Int_binary_op with `Binary_op
+
+*)
 
 let rec eval_in_env (env : Value.t Env.t) (v : Value.t) : Value.t =
   match v with
@@ -19,6 +61,15 @@ let rec eval_in_env (env : Value.t Env.t) (v : Value.t) : Value.t =
   | `Exp (`Atom a)   ->
     Env.lookup_ex env a
   | `Exp (`Bool b)   -> `Exp (`Bool b)
+  | `Exp (`If (pred, exp_true, exp_false)) ->
+    begin
+      match eval_in_env env (`Exp pred) with
+      | `Exp (`Bool false)
+      | `Exp `Unit ->
+        eval_in_env env (`Exp exp_false)
+      | _ ->
+        eval_in_env env (`Exp exp_true)
+    end
   | `Exp (`Define (atom, exp)) ->
     begin
       let v = eval_in_env env (`Exp exp) in
@@ -54,6 +105,13 @@ let rec eval_in_env (env : Value.t Env.t) (v : Value.t) : Value.t =
         let new_bindings = List.zip_exn params evaled_args in
         let new_env = Env.extend fenv new_bindings in
         eval_in_env new_env (`Exp body) 
+      | `Binary_op f ->
+        begin
+          match List.map args ~f:(fun e -> eval_in_env env (`Exp e)) with
+          | [ v1;  v2 ] -> f v1 v2
+          | _ -> 
+            raise_s [%sexp "could not apply binary operation", (head : Exp.t), (args : Exp.t list)]
+        end
       | `Int_binary_op f ->
         begin
           match List.map args ~f:(fun e -> eval_in_env env (`Exp e)) with
@@ -67,21 +125,13 @@ let rec eval_in_env (env : Value.t Env.t) (v : Value.t) : Value.t =
   | `Exp (`List []) -> failwith ""
   | `Function _ -> failwith ""
   | `Int_binary_op _ -> failwith ""
-;;
-
-
-let prelude =
-  let env = Env.empty () in
-  Env.bind env (Exp.A.of_string "+") (`Int_binary_op ( + ));
-  Env.bind env (Exp.A.of_string "*") (`Int_binary_op ( * ));
-  Env.bind env (Exp.A.of_string "-") (`Int_binary_op ( - ));
-  Env.bind env (Exp.A.of_string "/") (`Int_binary_op ( / ));
-  env
+  | `Binary_op _ -> failwith ""
 ;;
 
 
 let () =
+  let env = Prelude.prelude () in
   let program = Sexp.load_sexp "test.scm" |> Exp.t_of_code_sexp in
-  let result = eval_in_env prelude (`Exp program) in
+  let result = eval_in_env env (`Exp program) in
   printf !"%{sexp:Value.t}\n" result
 ;;
