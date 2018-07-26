@@ -135,9 +135,10 @@ let rec eval_in_env (env : Value.t Env.t) (v : Value.t) : Value.t =
       | _ ->
         raise_s [%sexp "could not apply as function", (head : Exp.t)]
     end
-  | `Exp (`List []) -> failwith ""
-  | `Function _ -> failwith ""
-  | `Builtin _ -> failwith ""
+  (* These cases should never occur *)
+  | `Exp (`List [])
+  | `Function _
+  | `Builtin _ -> assert false
 ;;
 
 
