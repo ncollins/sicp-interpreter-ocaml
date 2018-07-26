@@ -5,8 +5,7 @@ module Value = struct
   type t =
     [ `Exp of Exp.t
     | `Function of ((Exp.A.t list) * Exp.t * (t Env.t))
-    | `Int_binary_op of (int -> int -> int)
-    | `Binary_op of (t -> t -> t)
+    | `Builtin of (t list -> t)
     ]
   [@@deriving sexp]
 
@@ -14,10 +13,31 @@ end
 
 module Prelude = struct
 
-  let equal v1 v2 =
-    if Sexp.equal (Value.sexp_of_t v1) (Value.sexp_of_t v2)
-    then `Exp (`Bool true)
-    else `Exp (`Bool false)
+  let equal vs =
+    match vs with
+    | [ v1; v2 ] ->
+      if Sexp.equal (Value.sexp_of_t v1) (Value.sexp_of_t v2)
+      then `Exp (`Bool true)
+      else `Exp (`Bool false)
+    | _ ->
+      raise_s [%sexp "equal? takes two arguments"]
+  ;;
+
+  let int_arithmetic ~f = function
+    | [] ->
+      raise_s [%sexp "integer functions needs at least 1 argument"]
+    | vs ->
+      let integers =
+        List.map vs ~f:(function
+            | `Exp (`Int i) -> i
+            | _ -> 
+              raise_s [%sexp "+ takes interger arguments", (vs : Value.t list)]
+          )
+      in
+      let result = 
+        List.fold ~init:(List.hd_exn integers) ~f (List.tl_exn integers)
+      in
+      `Exp (`Int result)
   ;;
 
   let prelude () =
@@ -26,11 +46,11 @@ module Prelude = struct
       ~f:(fun (symbol, f) ->
           Env.bind env (Exp.A.of_string symbol) f
         )
-      [ "+", (`Int_binary_op ( + ))
-      ; "*",  (`Int_binary_op ( * ))
-      ; "-",  (`Int_binary_op ( - ))
-      ; "/",  (`Int_binary_op ( / ))
-      ; "equal?", (`Binary_op equal)
+      [ "+", (`Builtin (int_arithmetic ~f:( + )))
+      ; "*", (`Builtin (int_arithmetic ~f:( * )))
+      ; "-", (`Builtin (int_arithmetic ~f:( - )))
+      ; "/", (`Builtin (int_arithmetic ~f:( / )))
+      ; "equal?", (`Builtin equal)
       ]
     ;
     env
@@ -44,12 +64,17 @@ end
      { if, begin, lambda, define, set }
      as opposed to putting them in lists and matching on that?
      This might be significantly simpler
-   - null (reuse unit?) and pairs
-   - string functions
-   - `Bool _ can be replaced with constants
-   - rename `List to `Application
+
+   - null (reuse unit?) and pairs. pair can just be a function
+     that produces a tuple of values.
+
+   - string functions?
+
    - rename Atom to Symbol
-   - replace `Int_binary_op with `Binary_op
+   - `Bool _ can be replaced with constants
+
+   - rename `List to `Application
+
 
 *)
 
@@ -105,27 +130,14 @@ let rec eval_in_env (env : Value.t Env.t) (v : Value.t) : Value.t =
         let new_bindings = List.zip_exn params evaled_args in
         let new_env = Env.extend fenv new_bindings in
         eval_in_env new_env (`Exp body) 
-      | `Binary_op f ->
-        begin
-          match List.map args ~f:(fun e -> eval_in_env env (`Exp e)) with
-          | [ v1;  v2 ] -> f v1 v2
-          | _ -> 
-            raise_s [%sexp "could not apply binary operation", (head : Exp.t), (args : Exp.t list)]
-        end
-      | `Int_binary_op f ->
-        begin
-          match List.map args ~f:(fun e -> eval_in_env env (`Exp e)) with
-          | [`Exp (`Int a); `Exp (`Int b)] -> `Exp (`Int (f a b))
-          | _ -> 
-            raise_s [%sexp "could not apply integer operation", (head : Exp.t), (args : Exp.t list)]
-        end
+      | `Builtin f ->
+        f (List.map args ~f:(fun e -> eval_in_env env (`Exp e)))
       | _ ->
         raise_s [%sexp "could not apply as function", (head : Exp.t)]
     end
   | `Exp (`List []) -> failwith ""
   | `Function _ -> failwith ""
-  | `Int_binary_op _ -> failwith ""
-  | `Binary_op _ -> failwith ""
+  | `Builtin _ -> failwith ""
 ;;
 
 
