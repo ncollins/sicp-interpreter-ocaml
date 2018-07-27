@@ -119,8 +119,6 @@ and eval_application_in_env env ((f : Value.t), (args: Exp.t list)) =
     f (List.map args ~f:(fun e -> eval_in_env env (`Exp e)))
   | (v, _) ->
     raise_s [%sexp "could not apply as function", (v : Value.t)]
-
-
 ;;
 
 
