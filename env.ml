@@ -1,7 +1,7 @@
 open Core
 
 type 'a t =
-  (Exp.A.t, 'a) Hashtbl.Poly.t list
+  (Symbol.t, 'a) Hashtbl.Poly.t list
 [@@deriving sexp]
 
 let empty () =
@@ -12,12 +12,16 @@ let var_in_env t v =
   List.exists t ~f:(fun h -> Hashtbl.mem h v)
 ;;
 
+let lookup t v = 
+  List.find_map t ~f:(fun h -> Hashtbl.find h v)
+;;
+
 let lookup_ex t v =
-  match List.find_map t ~f:(fun h -> Hashtbl.find h v) with
+  match lookup t v with
   | Some e -> e
   | None ->
     raise_s [%sexp "could not find variable in environment"
-                 , (v : Exp.A.t)]
+                 , (v : Symbol.t)]
 ;;
 
 let bind t v e =
@@ -30,7 +34,7 @@ let set t v e =
   | Some h -> Hashtbl.update h v ~f:(fun _ -> e)
   | None -> 
     raise_s [%sexp "tried to set a variable not present in environment"
-                 , (v : Exp.A.t)]
+                 , (v : Symbol.t)]
 ;;
 
 let extend t bindings =

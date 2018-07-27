@@ -4,8 +4,8 @@ let equal vs =
   match vs with
   | [ v1; v2 ] ->
     if Sexp.equal (Value.sexp_of_t v1) (Value.sexp_of_t v2)
-    then `Exp (`Bool true)
-    else `Exp (`Bool false)
+    then `Exp (`Symbol (Symbol.true_))
+    else `Exp (`Symbol (Symbol.false_))
   | _ ->
     raise_s [%sexp "equal? takes two arguments"]
 ;;
@@ -31,12 +31,18 @@ let prelude () =
   let env = Env.empty () in
   List.iter
     ~f:(fun (symbol, f) ->
-        Env.bind env (Exp.A.of_string symbol) f
+        Env.bind env (Symbol.of_string symbol) f
       )
-    [ "+", (`Builtin (int_arithmetic ~f:( + )))
+    (* constants *)
+    [ "null", (`Exp (`Symbol Symbol.null_))
+    ; "true", (`Exp (`Symbol Symbol.true_))
+    ; "false", (`Exp (`Symbol Symbol.false_))
+    (* integer functions *)
+    ; "+", (`Builtin (int_arithmetic ~f:( + )))
     ; "*", (`Builtin (int_arithmetic ~f:( * )))
     ; "-", (`Builtin (int_arithmetic ~f:( - )))
     ; "/", (`Builtin (int_arithmetic ~f:( / )))
+    (* general functions *)
     ; "equal?", (`Builtin equal)
     ]
   ;
