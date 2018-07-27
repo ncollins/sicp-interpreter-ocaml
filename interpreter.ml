@@ -2,16 +2,9 @@ open Core
 
 (* TODO:
 
-   - should we be creating explict forms for
-     { if, begin, lambda, define, set }
-     as opposed to putting them in lists and matching on that?
-     This might be significantly simpler
+   - should we have unit in additon to null?
 
-   - null (reuse unit?) and pairs. pair can just be a function
-     that produces a tuple of values.
-
-   - rename Atom to Symbol
-   - `Bool _ can be replaced with constants
+   - add builtins for list/pair functions
 
    - string functions?
 
