@@ -124,10 +124,8 @@ end = struct
 
 end
 
-
-module C = struct
-  include Monad.Make2(Raw_cont)
-end
+include Raw_cont
+include Monad.Make2(Raw_cont)
 
 module Examples2 = struct 
 
@@ -141,17 +139,17 @@ module Examples2 = struct
 
   let cps_1 =
     let calculation = 
-      let open C.Monad_infix in
+      let open Monad_infix in
       add_cps 10 3 >>= fun total ->
       sqr_cps total >>= fun squared ->
-      C.return (squared > 160)
+      return (squared > 160)
     in
     calculation Bool.to_string
   ;;
 
   let cps_2 =
     let calculation = 
-      let open C.Let_syntax in
+      let open Let_syntax in
       let%bind total = add_cps 10 3 in
       sqr_cps total
     in
