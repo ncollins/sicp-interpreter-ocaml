@@ -11,6 +11,8 @@ val define_ : t
 val let_ : t
 val lambda_ : t
 
+val amb_ : t
+
 val true_ : t
 val false_ : t
 val null_ : t

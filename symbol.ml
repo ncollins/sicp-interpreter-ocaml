@@ -14,6 +14,8 @@ let define_ = of_string "define"
 let let_ = of_string "let"
 let lambda_ = of_string "lambda"
 
+let amb_ = of_string "amb"
+
 let true_ = of_string "true"
 let false_ = of_string "false"
 let null_ = of_string "null"
