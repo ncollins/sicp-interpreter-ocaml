@@ -17,6 +17,7 @@ let lookup t v =
 ;;
 
 let lookup_ex t v =
+  printf !"Variable lookup: %{sexp:Symbol.t}\n" v;
   match lookup t v with
   | Some e -> e
   | None ->
@@ -26,7 +27,10 @@ let lookup_ex t v =
 
 let bind t v e =
   let h = List.hd_exn t in
-  Hashtbl.update h v ~f:(fun _ -> e)
+  printf !"Pre hashtbl update: %{sexp:Symbol.t}\n" v;
+  Hashtbl.update h v ~f:(fun _ -> e);
+  printf "Post hashtbl update\n";
+  printf "-------------\n"
 ;;
 
 let set t v e =

@@ -151,7 +151,26 @@ module Examples2 = struct
     let calculation = 
       let open Let_syntax in
       let%bind total = add_cps 10 3 in
+      let%bind total = add_cps 10 total in
+      let%bind total = add_cps 10 total in
+      let%bind total = add_cps 10 total in
+      let%bind total = add_cps 10 total in
+      let%bind total = add_cps 10 total in
+      let%bind total = add_cps 10 total in
+      let%bind total = add_cps 10 total in
+      let%bind total = add_cps 10 total in
+      let%bind total = add_cps 10 total in
+      let%bind total = add_cps 10 total in
+      let%bind total = add_cps 10 total in
+      let%bind total = add_cps 10 total in
+      let%bind total = add_cps 10 total in
+      let%bind total = add_cps 10 total in
+      let%bind total = add_cps 10 total in
+      let%bind total = add_cps 10 total in
+      (*
       sqr_cps total
+      *)
+      return total
     in
     calculation ident
   ;;
