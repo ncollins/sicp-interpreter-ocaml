@@ -113,38 +113,40 @@ and eval_lambda_in_env env cont = function
     cont (`Function (valid_args, body, env))
   | _ -> raise_s [%sexp "bad arguments for 'lambda' form"]
 
-and eval_application_in_env env cont ((f : Value.t), (args: Exp.t list)) =
-  let rec make_cont ~args_eval (rev_evaled_args, unevaled_args) =
+and eval_sequence_in_env ~eval_with_rev_sequence env exp_list =
+  let rec make_cont (rev_evaled_args, unevaled_args) =
     fun v ->
       let rev_evaled_args = v::rev_evaled_args in
       match unevaled_args with
       | [] ->
-        let evaled_args = List.rev rev_evaled_args in
-        args_eval evaled_args
+        eval_with_rev_sequence rev_evaled_args
       | exp::unevaled_args ->
-        let next_cont = make_cont ~args_eval (rev_evaled_args, unevaled_args) in
+        let next_cont = make_cont (rev_evaled_args, unevaled_args) in
         eval_in_env env next_cont (`Exp exp)
   in
-  let args_eval, unevaled_args =
+  match exp_list with
+  | [] -> eval_with_rev_sequence []
+  | exp::rest ->
+    let next_cont = make_cont ([], rest) in
+    eval_in_env env next_cont (`Exp exp)
+
+and eval_application_in_env env cont ((f : Value.t), (args: Exp.t list)) =
+  let eval_rev_args, unevaled_args =
     match (f, args) with
     | (`Function (params, body, fenv), args) ->
-      ((fun evaled_args ->
-          let new_bindings = List.zip_exn params evaled_args in
+      ((fun rev_evaled_args ->
+          let new_bindings = List.zip_exn params (List.rev rev_evaled_args) in
           let new_env = Env.extend fenv new_bindings in
           eval_in_env new_env cont (`Exp body))
       , args)
     | (`Builtin builtin_f, args) ->
-      ((fun evaled_args ->
-          cont (builtin_f evaled_args))
+      ((fun rev_evaled_args ->
+          cont (builtin_f (List.rev rev_evaled_args)))
       , args)
     | (v, _) ->
       raise_s [%sexp "could not apply as function", (v : Value.t)]
   in
-  match unevaled_args with
-  | [] -> args_eval []
-  | exp::rest ->
-    let next_cont = make_cont ~args_eval ([], rest) in
-    eval_in_env env next_cont (`Exp exp)
+  eval_sequence_in_env ~eval_with_rev_sequence:eval_rev_args env unevaled_args
 ;;
 
 
