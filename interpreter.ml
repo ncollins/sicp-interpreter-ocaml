@@ -123,20 +123,37 @@ and eval_lambda_in_env env cont = function
   | _ -> raise_s [%sexp "bad arguments for 'lambda' form"]
 
 and eval_application_in_env env cont ((f : Value.t), (args: Exp.t list)) =
-  match (f, args) with
-  | (`Function (params, body, fenv), args) ->
-    let evaled_args =
-      (* TODO fold down this list with continuations that deal with the cons-ing of each new evaluated arg *)
-      List.map args ~f:(fun e -> eval_in_env env (fun v -> v) (`Exp e)) (* TODO NOT TAIL CALL ?? *)
-    in
-    let new_bindings = List.zip_exn params evaled_args in
-    let new_env = Env.extend fenv new_bindings in
-    eval_in_env new_env cont (`Exp body) 
-  | (`Builtin builtin_f, args) ->
-    (* TODO fold down this list with continuations that deal with the cons-ing of each new evaluated arg *)
-    cont (builtin_f (List.map args ~f:(fun e -> eval_in_env env (fun v -> v) (`Exp e)))) (* TODO NOT TAIL CALL ??? *)
-  | (v, _) ->
-    raise_s [%sexp "could not apply as function", (v : Value.t)]
+  let rec make_cont ~args_eval (rev_evaled_args, unevaled_args) =
+    fun v ->
+      let rev_evaled_args = v::rev_evaled_args in
+      match unevaled_args with
+      | [] ->
+        let evaled_args = List.rev rev_evaled_args in
+        args_eval evaled_args
+      | exp::unevaled_args ->
+        let next_cont = make_cont ~args_eval (rev_evaled_args, unevaled_args) in
+        eval_in_env env next_cont (`Exp exp)
+  in
+  let args_eval, unevaled_args =
+    match (f, args) with
+    | (`Function (params, body, fenv), args) ->
+      ((fun evaled_args ->
+          let new_bindings = List.zip_exn params evaled_args in
+          let new_env = Env.extend fenv new_bindings in
+          eval_in_env new_env cont (`Exp body))
+      , args)
+    | (`Builtin builtin_f, args) ->
+      ((fun evaled_args ->
+          cont (builtin_f evaled_args))
+      , args)
+    | (v, _) ->
+      raise_s [%sexp "could not apply as function", (v : Value.t)]
+  in
+  match unevaled_args with
+  | [] -> args_eval []
+  | exp::rest ->
+    let next_cont = make_cont ~args_eval ([], rest) in
+    eval_in_env env next_cont (`Exp exp)
 ;;
 
 
