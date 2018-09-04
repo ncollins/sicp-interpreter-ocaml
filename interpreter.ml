@@ -73,12 +73,12 @@ and eval_set_in_env env cont = function
   | _ -> raise_s [%sexp "bad arguments for 'define' form"]
 
 and eval_begin_in_env env cont exps = 
-    List.map exps ~f:(fun e -> `Exp e)
-    (* TODO should this be unit? *)
-    |> List.fold ~init:(`Exp (`Symbol Symbol.null_), env)
-      (* TODO how should the continuations be handled in this fold ? *)
-      ~f:(fun (_prev, env) exp -> (eval_in_env env cont exp, env)) (* TODO NOT TAIL CALL *)
-    |> fst
+    let eval_with_rev_sequence rev_sequence =
+      match rev_sequence with
+      | [] -> cont (`Exp (`Symbol Symbol.null_))
+      | last_value::_ -> cont (last_value)
+    in
+    eval_sequence_in_env ~eval_with_rev_sequence env exps
 
 and eval_let_in_env env cont = function
   | [ `List bindings ; body ] ->
@@ -91,12 +91,15 @@ and eval_let_in_env env cont = function
                    , (e : Exp.t)]
         )
     in
-    let evaled_bindings =
-      (* TODO fold down this list with continuations that deal with the cons-ing of each new evaluated binding *)
-      List.map valid_bindings ~f:(fun (a, e) -> (a, eval_in_env env (fun v -> v) (`Exp e))) (* TODO NOT TAIL CALL ?? *)
+    let symbols = List.map ~f:fst valid_bindings in
+    let expressions = List.map ~f:snd valid_bindings in
+    let eval_with_rev_sequence rev_sequence =
+      let expressions = List.rev rev_sequence in
+      let evaled_bindings = List.zip_exn symbols expressions in
+      let new_env = Env.extend env evaled_bindings in
+      eval_in_env new_env cont (`Exp body)
     in
-    let new_env = Env.extend env evaled_bindings in
-    eval_in_env new_env cont (`Exp body)
+    eval_sequence_in_env ~eval_with_rev_sequence env expressions
   | _ -> raise_s [%sexp "bad arguments for 'let' form"]
 
 and eval_lambda_in_env env cont = function
