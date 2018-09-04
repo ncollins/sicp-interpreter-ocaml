@@ -42,7 +42,6 @@ and eval_if_in_env env cont = function
   | [ pred; exp_true; exp_false] ->
     begin
       let post_predicate_cont pred_v = 
-        printf !"post_predicate_cont with %{sexp:Value.t}\n" pred_v;
         match pred_v with
         | `Exp (`Symbol s) ->
           if Symbol.((equal false_ s) || (equal null_ s))
@@ -51,21 +50,13 @@ and eval_if_in_env env cont = function
         | _ ->
           eval_in_env env cont (`Exp exp_false)
       in
-      let () = printf !"eval_if_in_env with predicate: %{sexp:Exp.t}\n" pred in
       eval_in_env env post_predicate_cont (`Exp pred)
     end
   | _ -> raise_s [%sexp "bad arguments for 'if' form"]
 
 and eval_define_in_env env cont = function
   | [ `Symbol s; exp] ->
-    (*
-    let v = eval_in_env env cont (`Exp exp) in (* TODO NOT TAIL CALL *)
-    let () = Env.bind env s v in
-    (* TODO should this be unit? *)
-    cont (`Exp (` Symbol Symbol.null_))
-    *)
     let define_continuation v =
-      printf !"define_continuation with %{sexp:Value.t}\n" v;
       let () = Env.bind env s v in
       cont (`Exp (`Symbol Symbol.null_))
     in
