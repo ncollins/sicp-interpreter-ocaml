@@ -17,3 +17,6 @@ let lambda_ = of_string "lambda"
 let true_ = of_string "true"
 let false_ = of_string "false"
 let null_ = of_string "null"
+
+let amb_ = of_string "amb"
+let fail_ = of_string "fail"
