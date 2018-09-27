@@ -1,5 +1,42 @@
 open Core
 
+let debug_print vs =
+  printf !"%{sexp:Value.t list}" vs;
+  (`Exp (`Symbol Symbol.null_))
+;;
+
+let debug_print_ln vs =
+  printf !"%{sexp:Value.t list}\n" vs;
+  (`Exp (`Symbol Symbol.null_))
+;;
+
+let rec to_string (v : Value.t) =
+  match v with
+  | `Exp (`Int i) -> Int.to_string i
+  | `Exp (`String s) -> "\"" ^ s ^ "\""
+  | `Exp (`Symbol sym) -> Symbol.to_string sym
+  | `Exp (`List lst) ->
+    "(" ^ (List.map ~f:(fun e -> to_string (`Exp e)) lst |> String.concat ~sep:" ") ^ ")"
+  | `Function (args, _, _)  ->
+    let l = List.length args in
+    if l = 1
+    then "<Function of 1 argument>"
+    else sprintf !"<Function of %d arguments>" (List.length args)
+  | `Builtin _ ->
+    "<Built-in-function"
+;;
+
+let print vs =
+  List.iter vs ~f:(fun v -> printf !"%s" (to_string v));
+  (`Exp (`Symbol Symbol.null_))
+;;
+
+let print_ln vs =
+  List.iter vs ~f:(fun v -> printf !"%s" (to_string v));
+  printf !"\n";
+  (`Exp (`Symbol Symbol.null_))
+;;
+
 let equal vs =
   match vs with
   | [ v1; v2 ] ->
@@ -44,6 +81,11 @@ let prelude () =
     ; "/", (`Builtin (int_arithmetic ~f:( / )))
     (* general functions *)
     ; "equal?", (`Builtin equal)
+    (* IO functions *)
+    ; "debug-print",  (`Builtin debug_print)
+    ; "debug-println", (`Builtin debug_print_ln)
+    ; "print",  (`Builtin print)
+    ; "println", (`Builtin print_ln)
     ]
   ;
   env
