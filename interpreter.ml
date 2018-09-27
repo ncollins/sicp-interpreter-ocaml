@@ -209,7 +209,7 @@ let rec repl_loop () =
              fail ()
           )
           (* failure function*)
-          (fun () -> printf !"No more values of: %{sexp:Exp.t}\n" exp; repl_loop ())
+          (fun () -> printf !"No more values of: %s\n" (String.strip line); repl_loop ())
           (`Exp exp)
       in
       let () = printf !"%{sexp:Value.t}\n" v in
