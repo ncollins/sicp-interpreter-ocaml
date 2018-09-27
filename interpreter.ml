@@ -67,7 +67,7 @@ and eval_set_in_env env = function
     `Exp (` Symbol Symbol.null_)
   | _ -> raise_s [%sexp "bad arguments for 'define' form"]
 
-and eval_begin_in_env env exps = 
+and eval_begin_in_env env exps =
     List.map exps ~f:(fun e -> `Exp e)
     (* TODO should this be unit? *)
     |> List.fold ~init:(`Exp (`Symbol Symbol.null_), env)
@@ -114,7 +114,7 @@ and eval_application_in_env env ((f : Value.t), (args: Exp.t list)) =
     in
     let new_bindings = List.zip_exn params evaled_args in
     let new_env = Env.extend fenv new_bindings in
-    eval_in_env new_env (`Exp body) 
+    eval_in_env new_env (`Exp body)
   | (`Builtin f, args) ->
     f (List.map args ~f:(fun e -> eval_in_env env (`Exp e)))
   | (v, _) ->

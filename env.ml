@@ -12,7 +12,7 @@ let var_in_env t v =
   List.exists t ~f:(fun h -> Hashtbl.mem h v)
 ;;
 
-let lookup t v = 
+let lookup t v =
   List.find_map t ~f:(fun h -> Hashtbl.find h v)
 ;;
 
