@@ -203,9 +203,6 @@ let rec repl_loop () =
           (* success function *)
           (fun v fail ->
              printf !"Top succeed cont: %{sexp:Value.t}\n" v;
-             (*
-              (`Exp (`Symbol Symbol.fail_))
-             *)
              fail ()
           )
           (* failure function*)
